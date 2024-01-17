@@ -212,7 +212,7 @@ impl Display for Error {
         match self {
             Error::Status(status, response) => {
                 write!(f, "{}: status code {}", response.get_url(), status)?;
-                if let Some(original) = response.history.first() {
+                if let Some(original) = response.history.get(0) {
                     write!(f, " (redirected from {})", original)?;
                 }
             }

@@ -3,11 +3,13 @@ use std::fmt;
 use std::io;
 use std::thread;
 use std::time::Duration;
+use std::time::SystemTime;
 use std::{env, sync::Arc};
 
-use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
-use rustls::ClientConfig;
-use rustls_pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::client::ServerCertVerified;
+use rustls::client::ServerCertVerifier;
+use rustls::ServerName;
+use rustls::{Certificate, ClientConfig};
 use ureq;
 
 #[derive(Debug)]
@@ -94,41 +96,19 @@ fn perform(
     Ok(())
 }
 
-#[derive(Debug)]
 struct AcceptAll {}
 
 impl ServerCertVerifier for AcceptAll {
     fn verify_server_cert(
         &self,
-        _end_entity: &CertificateDer,
-        _intermediates: &[CertificateDer],
+        _end_entity: &Certificate,
+        _intermediates: &[Certificate],
         _server_name: &ServerName,
+        _scts: &mut dyn Iterator<Item = &[u8]>,
         _ocsp_response: &[u8],
-        _now: UnixTime,
+        _now: SystemTime,
     ) -> Result<ServerCertVerified, rustls::Error> {
         Ok(ServerCertVerified::assertion())
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        _message: &[u8],
-        _cert: &CertificateDer<'_>,
-        _dss: &rustls::DigitallySignedStruct,
-    ) -> Result<HandshakeSignatureValid, rustls::Error> {
-        Ok(HandshakeSignatureValid::assertion())
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-        todo!()
     }
 }
 
@@ -185,7 +165,7 @@ Fetch url and copy it to stdout.
             }
             "-k" => {
                 let client_config = ClientConfig::builder()
-                    .dangerous()
+                    .with_safe_defaults()
                     .with_custom_certificate_verifier(Arc::new(AcceptAll {}))
                     .with_no_client_auth();
                 builder = builder.tls_config(Arc::new(client_config));
